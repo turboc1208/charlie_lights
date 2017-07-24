@@ -4,7 +4,7 @@ class charlie_lights(appapi.my_appapi):
 
   def initialize(self):
     # self.LOGLEVEL="DEBUG"
-    self.log("charlie_lights App")
+    self.log("Charlie_lights App")
     if "targets" in self.args:
       self.targets=eval(self.args["targets"])
     else:
@@ -22,9 +22,9 @@ class charlie_lights(appapi.my_appapi):
     else:
       self.light_off=0
     if "fan_max" in self.args:
-      self.fan_max = self.args["fan_max"]
+      self.fan_high = self.args["fan_high"]
     else:
-      self.fan_max=254
+      self.fan_high=254
     if "fan_med" in self.args:
       self.fan_med = self.args["fan_med"]
     else:
@@ -143,26 +143,32 @@ class charlie_lights(appapi.my_appapi):
   def my_turn_on(self,entity,**kwargs):
     self.log("entity={} kwargs={}".format(entity,kwargs))
     if not kwargs==None:
-      current_state=self.get_state(entity,"all")["attributes"]
-      self.log("current_state={}".format(current_state))
+      current_state=self.get_state(entity,"all")
+      attributes=current_state["attributes"]
+      current_state=current_state["state"]
+
+      self.log("current_state={}, attributes={}".format(current_state,attributes))
       if "brightness" in kwargs:
-        if "brightness" in current_state:
-          if not current_state["brightness"]==kwargs["brightness"]:
+        if "brightness" in attributes:
+          if not attributes["brightness"]==kwargs["brightness"]:
             self.log("turning on entity {} brightness {}".format(entity,kwargs["brightness"]))
             self.turn_on(entity,brightness=kwargs["brightness"])
           else:
             self.log("brightness unchanged")
         else:
-          self.log("No Brightness attribute in current_state {}".format(current_state))
+          if current_state=="off":
+            self.log("No Brightness assuming light {}")
+            self.turn_on(entity,brightness=kwargs["brightness"])
       elif "speed" in kwargs:
-        if "speed" in current_state:
-          if not current_state["speed"]==kwargs["speed"]:
+        if "speed" in attributes:
+          if not attributes["speed"]==kwargs["speed"]:
             self.log("turning on entity {} speed {}".format(entity,kwargs["speed"]))
             self.turn_on(entity,speed=kwargs["speed"])
           else:
             self.log("no change in speed")
         else:
-          self.log("No Speed in attribute in current_state {}".format(current_state))
+          self.log("No Speed in attribute assuming fan")
+          self.turn_on(entity,speed=kwargs["speed"])
       else:
         self.log("unknown attributes {}".format(kwargs))
     else:
@@ -218,9 +224,10 @@ class charlie_lights(appapi.my_appapi):
     state=0
     for trigger in self.targets[target]["triggers"]:      # loop through triggers
       t_dict=self.targets[target]["triggers"][trigger]
-      t_state=self.normalize_state(target,trigger,self.get_state(trigger))
+      t_state=str(self.normalize_state(target,trigger,self.get_state(trigger)))
       self.log("trigger={} onValue={} bit={} currentstate={}".format(trigger,t_dict["onValue"],t_dict["bit"],t_state))
       # or value for this trigger to existing state bits.
       state=state | (t_dict["bit"] if (t_state==t_dict["onValue"]) else 0)
+      self.log("state={}".format(state))
     return state
 
